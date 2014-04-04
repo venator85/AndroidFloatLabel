@@ -5,6 +5,7 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -156,6 +157,18 @@ public class FloatLabel extends FrameLayout {
 	 */
 	public EditText getEditText() {
 		return mEditText;
+	}
+
+	public Editable getText() {
+		return mEditText.getText();
+	}
+
+	public void setError(CharSequence error) {
+		mEditText.setError(error);
+	}
+
+	public void setError(CharSequence error, Drawable icon) {
+		mEditText.setError(error, icon);
 	}
 
 	/**
