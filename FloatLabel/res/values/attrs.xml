@@ -7,6 +7,7 @@
         <attr name="android:text" />
         <attr name="android:textColorHint" />
         <attr name="android:inputType" />
+        <attr name="android:imeOptions" />
     </declare-styleable>
 
 </resources>

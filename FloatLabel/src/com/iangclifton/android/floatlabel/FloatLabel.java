@@ -17,7 +17,6 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -45,7 +44,7 @@ public class FloatLabel extends FrameLayout {
 	/**
 	 * Reference to the EditText
 	 */
-	private EditText mEditText;
+	private TextView mEditText;
 
 	/**
 	 * When init is complete, child views can no longer be added
@@ -155,12 +154,16 @@ public class FloatLabel extends FrameLayout {
 	 * 
 	 * @return the EditText portion of this View
 	 */
-	public EditText getEditText() {
+	public TextView getTextView() {
 		return mEditText;
 	}
 
-	public Editable getText() {
+	public CharSequence getText() {
 		return mEditText.getText();
+	}
+
+	public String getTextString() {
+		return mEditText.getText() != null ? mEditText.getText().toString() : "";
 	}
 
 	public void setError(CharSequence error) {
@@ -216,7 +219,7 @@ public class FloatLabel extends FrameLayout {
 		final int childBottom = bottom - top - getPaddingBottom();
 
 		layoutChild(mLabel, childLeft, childTop, childRight, childBottom);
-		layoutChild(mEditText, childLeft, childTop + mLabel.getMeasuredHeight() , childRight, childBottom);
+		layoutChild(mEditText, childLeft, childTop + mLabel.getMeasuredHeight(), childRight, childBottom);
 	}
 
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
@@ -350,28 +353,29 @@ public class FloatLabel extends FrameLayout {
 		final CharSequence hint;
 		final ColorStateList hintColor;
 		final int inputType;
+		final int imeOptions;
 		if (attrs == null) {
 			layout = R.layout.float_label;
 			text = null;
 			hint = null;
 			hintColor = null;
 			inputType = EditorInfo.TYPE_CLASS_TEXT;
+			imeOptions = EditorInfo.IME_ACTION_UNSPECIFIED;
 		} else {
 			final TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.FloatLabel, defStyle, 0);
-
 			layout = a.getResourceId(R.styleable.FloatLabel_android_layout, R.layout.float_label);
 			text = a.getText(R.styleable.FloatLabel_android_text);
 			hint = a.getText(R.styleable.FloatLabel_android_hint);
 			hintColor = a.getColorStateList(R.styleable.FloatLabel_android_textColorHint);
 			inputType = a.getInt(R.styleable.FloatLabel_android_inputType, EditorInfo.TYPE_CLASS_TEXT);
+			imeOptions = a.getInt(R.styleable.FloatLabel_android_imeOptions, EditorInfo.IME_ACTION_UNSPECIFIED);
 			a.recycle();
 		}
 
 		inflate(context, layout, this);
-		mEditText = (EditText) findViewById(R.id.edit_text);
+		mEditText = (TextView) findViewById(R.id.edit_text);
 		if (mEditText == null) {
-			throw new RuntimeException(
-					"Your layout must have an EditText whose ID is @id/edit_text");
+			throw new RuntimeException("Your layout must have an EditText whose ID is @id/edit_text");
 		}
 		mEditText.setHint(hint);
 		mEditText.setText(text);
@@ -379,11 +383,11 @@ public class FloatLabel extends FrameLayout {
 			mEditText.setHintTextColor(hintColor);
 		}
 		mEditText.setInputType(inputType);
+		mEditText.setImeOptions(imeOptions);
 
 		mLabel = (TextView) findViewById(R.id.float_label);
 		if (mLabel == null) {
-			throw new RuntimeException(
-					"Your layout must have a TextView whose ID is @id/float_label");
+			throw new RuntimeException("Your layout must have a TextView whose ID is @id/float_label");
 		}
 		mLabel.setText(mEditText.getHint());
 
@@ -431,6 +435,7 @@ public class FloatLabel extends FrameLayout {
 			label.animate().alpha(0).y(offset);
 		}
 	}
+
 	/**
 	 * TextWatcher that notifies FloatLabel when the EditText changes between
 	 * having text and not having text or vice versa.
@@ -448,8 +453,7 @@ public class FloatLabel extends FrameLayout {
 		 * Android will call afterTextChanged() three (!) times, passing "a", then "" (hides the label),
 		 * then "a" (shows the label).
 		 */
-		@SuppressLint("HandlerLeak")
-		private Handler hideDelayer = new Handler() {
+		@SuppressLint("HandlerLeak") private Handler hideDelayer = new Handler() {
 
 			@Override
 			public void handleMessage(Message msg) {
