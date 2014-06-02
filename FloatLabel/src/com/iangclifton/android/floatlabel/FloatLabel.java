@@ -197,6 +197,14 @@ public class FloatLabel extends FrameLayout {
 		mLabel.setText(hint);
 	}
 
+	public final void setText(CharSequence text) {
+		mEditText.setText(text);
+	}
+
+	public final void setText(int resid) {
+		mEditText.setText(resid);
+	}
+
 	/**
 	 * Specifies a new LabelAnimator to handle calls to show/hide the label
 	 *
