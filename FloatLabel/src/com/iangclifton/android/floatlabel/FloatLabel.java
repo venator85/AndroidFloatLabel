@@ -1,11 +1,11 @@
 package com.iangclifton.android.floatlabel;
 
+import android.animation.TypeEvaluator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.content.res.TypedArray;
-import android.graphics.drawable.Drawable;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,7 +16,8 @@ import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
+import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -41,62 +42,21 @@ public class FloatLabel extends FrameLayout {
 	private static final String SAVE_STATE_PARENT = "saveStateParent";
 	private static final String SAVE_STATE_TAG = "saveStateTag";
 
-	/**
-	 * Reference to the EditText
-	 */
-	private TextView mEditText;
-
-	/**
-	 * When init is complete, child views can no longer be added
-	 */
-	private boolean mInitComplete = false;
-
-	/**
-	 * Reference to the TextView used as the label
-	 */
-	private TextView mLabel;
-
-	/**
-	 * LabelAnimator that animates the appearance and disappearance of the label TextView
-	 */
-	private LabelAnimator mLabelAnimator = new DefaultLabelAnimator();
-
-	/**
-	 * True if the TextView label is showing (alpha 1f)
-	 */
-	private boolean mLabelShowing;
-
-	/**
-	 * Holds saved state if any is waiting to be restored
-	 */
 	private Bundle mSavedState;
 
-	/**
-	 * Interface for providing custom animations to the label TextView.
-	 */
-	public interface LabelAnimator {
+	private EditText mEditText;
+	private TextView mLabel;
 
-		/**
-		 * Called when the label should become visible
-		 *
-		 * @param label TextView to animate to visible
-		 */
-		public void onDisplayLabel(View label);
-
-		/**
-		 * Called when the label should become invisible
-		 *
-		 * @param label TextView to animate to invisible
-		 */
-		public void onHideLabel(View label);
-	}
+	private boolean mLabelShowing;
 
 	public FloatLabel(Context context) {
-		this(context, null, 0);
+		super(context);
+		init(context, null, 0);
 	}
 
 	public FloatLabel(Context context, AttributeSet attrs) {
-		this(context, attrs, 0);
+		super(context, attrs);
+		init(context, attrs, 0);
 	}
 
 	public FloatLabel(Context context, AttributeSet attrs, int defStyle) {
@@ -104,118 +64,45 @@ public class FloatLabel extends FrameLayout {
 		init(context, attrs, defStyle);
 	}
 
-	@Override
-	public void addView(View child) {
-		if (mInitComplete) {
-			throw new UnsupportedOperationException("You cannot add child views to a FloatLabel");
+	private void init(Context context, AttributeSet attrs, int defStyle) {
+
+		mLabel = new TextView(context);
+		addView(mLabel, LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+	}
+
+	private void setEditText(EditText editText) {
+
+		mEditText = editText;
+
+		mLabel.setText(mEditText.getHint());
+
+		mEditText.addTextChangedListener(new EditTextWatcher());
+		if (mEditText.getText().length() == 0) {
+			mLabel.setAlpha(0);
+			mLabelShowing = false;
 		} else {
-			super.addView(child);
+			mLabel.setVisibility(View.VISIBLE);
+			mLabelShowing = true;
 		}
 	}
 
-	@Override
-	public void addView(View child, int index) {
-		if (mInitComplete) {
-			throw new UnsupportedOperationException("You cannot add child views to a FloatLabel");
-		} else {
-			super.addView(child, index);
-		}
-	}
-
-	@Override
-	public void addView(View child, int index, android.view.ViewGroup.LayoutParams params) {
-		if (mInitComplete) {
-			throw new UnsupportedOperationException("You cannot add child views to a FloatLabel");
-		} else {
-			super.addView(child, index, params);
-		}
-	}
-
-	@Override
-	public void addView(View child, int width, int height) {
-		if (mInitComplete) {
-			throw new UnsupportedOperationException("You cannot add child views to a FloatLabel");
-		} else {
-			super.addView(child, width, height);
-		}
-	}
-
-	@Override
-	public void addView(View child, android.view.ViewGroup.LayoutParams params) {
-		if (mInitComplete) {
-			throw new UnsupportedOperationException("You cannot add child views to a FloatLabel");
-		} else {
-			super.addView(child, params);
-		}
-	}
-
-	/**
-	 * Returns the EditText portion of this View
-	 * 
-	 * @return the EditText portion of this View
-	 */
-	public TextView getTextView() {
+	public EditText getEditText() {
 		return mEditText;
 	}
 
-	public CharSequence getText() {
-		return mEditText.getText();
+	public TextView getLabel() {
+		return mLabel;
 	}
 
-	public String getTextString() {
-		return mEditText.getText() != null ? mEditText.getText().toString() : "";
-	}
-
-	public void setError(CharSequence error) {
-		mEditText.setError(error);
-	}
-
-	public void setError(CharSequence error, Drawable icon) {
-		mEditText.setError(error, icon);
-	}
-
-	/**
-	 * Sets the text to be displayed above the EditText if the EditText is
-	 * nonempty or as the EditText hint if it is empty
-	 * 
-	 * @param resid
-	 *            int String resource ID
-	 */
-	public void setLabel(int resid) {
-		setLabel(getContext().getString(resid));
-	}
-
-	/**
-	 * Sets the text to be displayed above the EditText if the EditText is
-	 * nonempty or as the EditText hint if it is empty
-	 * 
-	 * @param hint
-	 *            CharSequence to set as the label
-	 */
-	public void setLabel(CharSequence hint) {
-		mEditText.setHint(hint);
-		mLabel.setText(hint);
-	}
-
-	public final void setText(CharSequence text) {
-		mEditText.setText(text);
-	}
-
-	public final void setText(int resid) {
-		mEditText.setText(resid);
-	}
-
-	/**
-	 * Specifies a new LabelAnimator to handle calls to show/hide the label
-	 *
-	 * @param labelAnimator LabelAnimator to use; null causes use of the default LabelAnimator
-	 */
-	public void setLabelAnimator(LabelAnimator labelAnimator) {
-		if (labelAnimator == null) {
-			mLabelAnimator = new DefaultLabelAnimator();
-		} else {
-			mLabelAnimator = labelAnimator;
+	@Override
+	public final void addView(View child, int index, ViewGroup.LayoutParams params) {
+		if (child instanceof EditText) {
+			if (mEditText != null) {
+				throw new IllegalArgumentException("We already have an EditText, can only have one");
+			}
+			setEditText((EditText) child);
 		}
+		super.addView(child, index, params);
 	}
 
 	@Override
@@ -230,6 +117,7 @@ public class FloatLabel extends FrameLayout {
 		layoutChild(mEditText, childLeft, childTop + mLabel.getMeasuredHeight(), childRight, childBottom);
 	}
 
+	@SuppressLint("RtlHardcoded")
 	@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR1)
 	private void layoutChild(View child, int parentLeft, int parentTop, int parentRight, int parentBottom) {
 		if (child.getVisibility() != GONE) {
@@ -299,7 +187,6 @@ public class FloatLabel extends FrameLayout {
 				return;
 			}
 		}
-
 		super.onRestoreInstanceState(state);
 	}
 
@@ -354,105 +241,12 @@ public class FloatLabel extends FrameLayout {
 		return result;
 	}
 
-	private void init(Context context, AttributeSet attrs, int defStyle) {
-		// Load custom attributes
-		final int layout;
-		final CharSequence text;
-		final CharSequence hint;
-		final ColorStateList hintColor;
-		final int inputType;
-		final int imeOptions;
-		if (attrs == null) {
-			layout = R.layout.float_label;
-			text = null;
-			hint = null;
-			hintColor = null;
-			inputType = EditorInfo.TYPE_CLASS_TEXT;
-			imeOptions = EditorInfo.IME_ACTION_UNSPECIFIED;
-		} else {
-			final TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.FloatLabel, defStyle, 0);
-			layout = a.getResourceId(R.styleable.FloatLabel_android_layout, R.layout.float_label);
-			text = a.getText(R.styleable.FloatLabel_android_text);
-			hint = a.getText(R.styleable.FloatLabel_android_hint);
-			hintColor = a.getColorStateList(R.styleable.FloatLabel_android_textColorHint);
-			inputType = a.getInt(R.styleable.FloatLabel_android_inputType, EditorInfo.TYPE_CLASS_TEXT);
-			imeOptions = a.getInt(R.styleable.FloatLabel_android_imeOptions, EditorInfo.IME_ACTION_UNSPECIFIED);
-			a.recycle();
-		}
-
-		inflate(context, layout, this);
-		mEditText = (TextView) findViewById(R.id.edit_text);
-		if (mEditText == null) {
-			throw new RuntimeException("Your layout must have an EditText whose ID is @id/edit_text");
-		}
-		mEditText.setHint(hint);
-		mEditText.setText(text);
-		if (hintColor != null) {
-			mEditText.setHintTextColor(hintColor);
-		}
-		mEditText.setInputType(inputType);
-		mEditText.setImeOptions(imeOptions);
-
-		mLabel = (TextView) findViewById(R.id.float_label);
-		if (mLabel == null) {
-			throw new RuntimeException("Your layout must have a TextView whose ID is @id/float_label");
-		}
-		mLabel.setText(mEditText.getHint());
-
-		// Listen to EditText to know when it is empty or nonempty
-		mEditText.addTextChangedListener(new EditTextWatcher());
-
-		// Check current state of EditText
-		if (mEditText.getText().length() == 0) {
-			mLabel.setAlpha(0);
-			mLabelShowing = false;
-		} else {
-			mLabel.setVisibility(View.VISIBLE);
-			mLabelShowing = true;
-		}
-
-		// Mark init as complete to prevent accidentally breaking the view by
-		// adding children
-		mInitComplete = true;
-	}
-
-	/**
-	 * LabelAnimator that uses the traditional float label Y shift and fade.
-	 *
-	 * @author Ian G. Clifton
-	 */
-	private static class DefaultLabelAnimator implements LabelAnimator {
-
-		@Override
-		public void onDisplayLabel(View label) {
-			final float offset = label.getHeight() / 2;
-			final float currentY = label.getY();
-			if (currentY != offset) {
-				label.setY(offset);
-			}
-			label.animate().alpha(1).y(0);
-		}
-
-		@Override
-		public void onHideLabel(View label) {
-			final float offset = label.getHeight() / 2;
-			final float currentY = label.getY();
-			if (currentY != 0) {
-				label.setY(0);
-			}
-			label.animate().alpha(0).y(offset);
-		}
-	}
-
-	/**
-	 * TextWatcher that notifies FloatLabel when the EditText changes between
-	 * having text and not having text or vice versa.
-	 * 
-	 * @author Ian G. Clifton
-	 */
 	private class EditTextWatcher implements TextWatcher {
 
 		private boolean hidePending;
+		private Integer hintTextColor;
+
+		private int HIDE_DELAYER_CODE = 14672;
 
 		/**
 		 * Introduce a delay of 150 ms before hiding the label.
@@ -465,29 +259,58 @@ public class FloatLabel extends FrameLayout {
 
 			@Override
 			public void handleMessage(Message msg) {
-				if (mLabelShowing) {
-					mLabelAnimator.onHideLabel(mLabel);
-					mLabelShowing = false;
+				if (msg.what == HIDE_DELAYER_CODE) {
+					if (mLabelShowing) {
+						hideLabel(mEditText, mLabel);
+						mLabelShowing = false;
+					}
+					hidePending = false;
 				}
-				hidePending = false;
 			}
 		};
 
 		@Override
 		public void afterTextChanged(Editable s) {
+
+			if (hintTextColor == null) {
+				hintTextColor = mEditText.getCurrentHintTextColor();
+			}
 			if (s.length() == 0) {
 				// Text is empty; TextView label should be invisible
 				hidePending = true;
-				hideDelayer.removeCallbacksAndMessages(null);
-				hideDelayer.sendEmptyMessageDelayed(0, 150);
+				mEditText.setHintTextColor(Color.TRANSPARENT);
+				hideDelayer.removeMessages(HIDE_DELAYER_CODE);
+				hideDelayer.sendEmptyMessageDelayed(HIDE_DELAYER_CODE, 150);
 			} else if (!mLabelShowing) {
 				// Text is nonempty; TextView label should be visible
 				mLabelShowing = true;
-				mLabelAnimator.onDisplayLabel(mLabel);
+				displayLabel(mEditText, mLabel);
 			} else if (hidePending) {
-				hideDelayer.removeCallbacksAndMessages(null);
+				hideDelayer.removeMessages(HIDE_DELAYER_CODE);
 				hidePending = false;
 			}
+		}
+
+		private void displayLabel(EditText editText, TextView label) {
+			final float offset = label.getHeight() / 2;
+			final float currentY = label.getY();
+			if (currentY != offset) {
+				label.setY(offset);
+			}
+			label.animate().setDuration(300).alpha(1).y(0);
+		}
+
+		private void hideLabel(EditText editText, TextView label) {
+			final float offset = label.getHeight() / 2;
+			final float currentY = label.getY();
+			if (currentY != 0) {
+				label.setY(0);
+			}
+			label.animate().setDuration(300).alpha(0).y(offset);
+
+			ValueAnimator fadeInHint = ValueAnimator.ofObject(new ColorFadeInEvaluator(hintTextColor), 0);
+			fadeInHint.setDuration(300);
+			fadeInHint.start();
 		}
 
 		@Override
@@ -500,4 +323,22 @@ public class FloatLabel extends FrameLayout {
 			// Ignored
 		}
 	}
+
+	private final class ColorFadeInEvaluator implements TypeEvaluator<Integer> {
+		private final int mHintTextColor;
+
+		public ColorFadeInEvaluator(int hintTextColor) {
+			mHintTextColor = hintTextColor;
+		}
+
+		@Override
+		public Integer evaluate(float fraction, Integer startValue, Integer endValue) {
+			int endAlpha = mHintTextColor >> 24 & 0xff;
+			int endColor = mHintTextColor & 0xffffff;
+			int outColor = (int) (fraction * endAlpha) << 24 | endColor;
+			mEditText.setHintTextColor(outColor);
+			return outColor;
+		}
+	}
+
 }
